@@ -6,7 +6,7 @@ on:
       SYNC_URL:
         description: 'SYNC_URL'
         required: true
-        default: 'https://github.com/momo54181/sync.git'  # 修复：移除多余斜杠
+        default: 'https://github.com/momo54181/sync.git'  # 修复1：移除多余斜杠
       MANIFEST_BRANCH:
         description: 'MANIFEST_BRANCH'
         required: true
@@ -14,7 +14,7 @@ on:
       DEVICE_TREE_URL:
         description: 'DEVICE_TREE_URL'
         required: true
-        default: 'https://github.com/byf3332/Xiaomi-Archimedes-device-tree.git'  # 修复：补全URL
+        default: 'https://github.com/byf3332/Xiaomi-Archimedes-device-tree.git'  # 修复2：补全设备树URL
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
@@ -45,17 +45,20 @@ on:
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-latest  # 修复：使用支持的运行器
+    runs-on: ubuntu-latest  # 修复3：使用支持的运行器（原ubuntu-20.04已废弃）
     permissions:
       contents: write
+    
+    # 修复4：添加环境变量强制Node.js 24，解决兼容性警告
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    
     steps:
 
-    
-    # You might want to Checkout your repo first, but not mandatory
     - name: Check Out
       uses: actions/checkout@v4
+      # 可升级到v6：uses: actions/checkout@v6
 
-    # Cleanup The Actions Workspace Using Custom Composite Run Actions
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
 
@@ -69,11 +72,12 @@ jobs:
     - name: Prepare the build environment
       run: |
         sudo apt install git aria2 -y
-        git clone https://gitlab.com/OrangeFox/misc/scripts.git scripts  # 修复：添加.git后缀
+        git clone https://gitlab.com/OrangeFox/misc/scripts.git scripts  # 修复5：添加.git后缀
         cd scripts
         sudo bash setup/android_build_env.sh
-        sed -i 's/cd -/cd ../g' setup/install_android_sdk.sh
-        sudo bash setup/install_android_sdk.sh
+        # 修复6：移除不存在的脚本调用
+        # sed -i 's/cd -/cd ../g' setup/install_android_sdk.sh
+        # sudo bash setup/install_android_sdk.sh
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Sync OrangeFox sources and minimal manifest
@@ -105,8 +109,8 @@ jobs:
       with:
         swap-size-gb: 12
         
-    - name: install py-is-py2
-      run: sudo apt-get install python-is-python2
+    - name: Install Python
+      run: sudo apt-get install -y python3 python3-pip python-is-python3  # 修复7：安装python-is-python3而非python-is-python2
 
     - name: Building recovery
       run: |
@@ -128,6 +132,7 @@ jobs:
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
+      # 可升级到v3：uses: softprops/action-gh-release@v3
       with:
         files: |
           ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.img
